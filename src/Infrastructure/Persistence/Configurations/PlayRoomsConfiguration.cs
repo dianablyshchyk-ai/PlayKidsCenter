@@ -10,6 +10,7 @@ public class PlayRoomsConfiguration : IEntityTypeConfiguration<PlayRoom>
     public void Configure(EntityTypeBuilder<PlayRoom> builder)
     {
         builder.HasKey(x => x.Id);
+        builder.Property(x => x.Id).HasConversion(x => x.Value, x => new PlayRoomId(x));
 
         builder.Property(x => x.RoomNumber)
             .HasColumnType("varchar(50)")
@@ -20,6 +21,13 @@ public class PlayRoomsConfiguration : IEntityTypeConfiguration<PlayRoom>
 
         builder.Property(x => x.Name)
             .HasColumnType("varchar(255)")
+            .IsRequired();
+
+        builder.HasIndex(x => x.Name)
+            .IsUnique();
+
+        builder.Property(x => x.Description)
+            .HasColumnType("varchar(500)")
             .IsRequired();
 
         builder.Property(x => x.PricePerHour)
@@ -39,9 +47,15 @@ public class PlayRoomsConfiguration : IEntityTypeConfiguration<PlayRoom>
             .HasColumnType("varchar(50)")
             .IsRequired();
 
+        builder.OwnsOne(x => x.Attributes, b => b.ToJson());
+
         builder.Property(x => x.CreatedAt)
             .HasConversion(new DateTimeUtcConverter())
             .HasDefaultValueSql("timezone('utc', now())")
             .IsRequired();
+
+        builder.Property(x => x.UpdatedAt)
+            .HasConversion(new DateTimeUtcConverter())
+            .IsRequired(false);
     }
 }

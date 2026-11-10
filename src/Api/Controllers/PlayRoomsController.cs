@@ -1,17 +1,23 @@
 ﻿using Api.Dtos;
-using Application.PlayRooms.Services.Abstract;
+using Api.Modules.Errors;
+using Application.Common.Interfaces.Queries;
+using Application.PlayRooms.Commands;
+using Domain.PlayRooms;
+using MediatR;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Api.Controllers;
 
 [Route("playrooms")]
 [ApiController]
-public class PlayRoomsController(IPlayRoomService playRoomService) : ControllerBase
+public class PlayRoomsController(
+    ISender sender,
+    IPlayRoomQueries playRoomQueries) : ControllerBase
 {
     [HttpGet]
     public async Task<ActionResult<IReadOnlyList<PlayRoomDto>>> GetPlayRooms(CancellationToken cancellationToken)
     {
-        var playRooms = await playRoomService.GetPlayRooms(cancellationToken);
+        var playRooms = await playRoomQueries.GetAll(cancellationToken);
         var dtos = playRooms.Select(PlayRoomDto.FromDomainModel).ToList();
         return Ok(dtos);
     }
@@ -19,13 +25,11 @@ public class PlayRoomsController(IPlayRoomService playRoomService) : ControllerB
     [HttpGet("{id:guid}")]
     public async Task<ActionResult<PlayRoomDto>> GetPlayRoom(Guid id, CancellationToken cancellationToken)
     {
-        var playRoom = await playRoomService.GetPlayRoom(id, cancellationToken);
-        if (playRoom is null)
-        {
-            return NotFound();
-        }
+        var playRoom = await playRoomQueries.GetById(new PlayRoomId(id), cancellationToken);
 
-        return PlayRoomDto.FromDomainModel(playRoom);
+        return playRoom.Match<ActionResult<PlayRoomDto>>(
+            p => PlayRoomDto.FromDomainModel(p),
+            () => NotFound());
     }
 
     [HttpPost]
@@ -33,24 +37,23 @@ public class PlayRoomsController(IPlayRoomService playRoomService) : ControllerB
         [FromBody] CreatePlayRoomDto request,
         CancellationToken cancellationToken)
     {
-        try
+        var input = new CreatePlayRoomCommand
         {
-            var playRoom = await playRoomService.Add(
-                request.RoomNumber,
-                request.Name,
-                request.PricePerHour,
-                request.Capacity,
-                request.HasAnimator,
-                request.Theme,
-                cancellationToken);
+            RoomNumber = request.RoomNumber,
+            Name = request.Name,
+            Description = request.Description,
+            PricePerHour = request.PricePerHour,
+            Capacity = request.Capacity,
+            HasAnimator = request.HasAnimator,
+            Theme = request.Theme,
+            Attributes = request.Attributes?.ToDomainModel()
+        };
 
-            var dto = PlayRoomDto.FromDomainModel(playRoom);
-            return CreatedAtAction(nameof(GetPlayRoom), new { id = dto.Id }, dto);
-        }
-        catch (ArgumentException exception)
-        {
-            return Conflict(exception.Message);
-        }
+        var result = await sender.Send(input, cancellationToken);
+
+        return result.Match<ActionResult<PlayRoomDto>>(
+            p => CreatedAtAction(nameof(GetPlayRoom), new { id = p.Id.Value }, PlayRoomDto.FromDomainModel(p)),
+            e => e.ToObjectResult());
     }
 
     [HttpPut("{id:guid}")]
@@ -59,40 +62,38 @@ public class PlayRoomsController(IPlayRoomService playRoomService) : ControllerB
         [FromBody] UpdatePlayRoomDto request,
         CancellationToken cancellationToken)
     {
-        try
+        var input = new UpdatePlayRoomCommand
         {
-            var playRoom = await playRoomService.Update(
-                id,
-                request.RoomNumber,
-                request.Name,
-                request.PricePerHour,
-                request.Capacity,
-                request.HasAnimator,
-                request.Theme,
-                cancellationToken);
+            PlayRoomId = id,
+            RoomNumber = request.RoomNumber,
+            Name = request.Name,
+            Description = request.Description,
+            PricePerHour = request.PricePerHour,
+            Capacity = request.Capacity,
+            HasAnimator = request.HasAnimator,
+            Theme = request.Theme,
+            Attributes = request.Attributes?.ToDomainModel()
+        };
 
-            if (playRoom is null)
-            {
-                return NotFound();
-            }
+        var result = await sender.Send(input, cancellationToken);
 
-            return PlayRoomDto.FromDomainModel(playRoom);
-        }
-        catch (ArgumentException exception)
-        {
-            return Conflict(exception.Message);
-        }
+        return result.Match<ActionResult<PlayRoomDto>>(
+            p => PlayRoomDto.FromDomainModel(p),
+            e => e.ToObjectResult());
     }
 
     [HttpDelete("{id:guid}")]
     public async Task<IActionResult> DeletePlayRoom(Guid id, CancellationToken cancellationToken)
     {
-        var isDeleted = await playRoomService.Delete(id, cancellationToken);
-        if (!isDeleted)
+        var input = new DeletePlayRoomCommand
         {
-            return NotFound();
-        }
+            PlayRoomId = id
+        };
 
-        return NoContent();
+        var result = await sender.Send(input, cancellationToken);
+
+        return result.Match<IActionResult>(
+            _ => NoContent(),
+            e => e.ToObjectResult());
     }
 }

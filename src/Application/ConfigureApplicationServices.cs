@@ -1,5 +1,7 @@
-﻿using Application.PlayRooms.Services.Abstract;
-using Application.PlayRooms.Services.Implementation;
+﻿using System.Reflection;
+using Application.Common.Behaviours;
+using FluentValidation;
+using MediatR;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Application;
@@ -8,6 +10,9 @@ public static class ConfigureApplicationServices
 {
     public static void AddApplicationServices(this IServiceCollection services)
     {
-        services.AddScoped<IPlayRoomService, PlayRoomService>();
+        services.AddValidatorsFromAssembly(Assembly.GetExecutingAssembly());
+        services.AddMediatR(configuration =>
+            configuration.RegisterServicesFromAssembly(Assembly.GetExecutingAssembly()));
+        services.AddTransient(typeof(IPipelineBehavior<,>), typeof(ValidationBehaviour<,>));
     }
 }
