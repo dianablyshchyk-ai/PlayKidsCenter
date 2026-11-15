@@ -9,6 +9,7 @@ public class PlayRoomImageConfiguration : IEntityTypeConfiguration<PlayRoomImage
     public void Configure(EntityTypeBuilder<PlayRoomImage> builder)
     {
         builder.HasKey(x => x.Id);
+        builder.Property(x => x.Id).HasConversion(x => x.Value, x => new PlayRoomImageId(x));
         builder.Property(x => x.PlayRoomId).HasConversion(x => x.Value, x => new PlayRoomId(x));
 
         builder.Property(x => x.OriginalName)

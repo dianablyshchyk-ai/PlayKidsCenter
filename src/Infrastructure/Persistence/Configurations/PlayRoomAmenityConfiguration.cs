@@ -1,4 +1,5 @@
-﻿using Domain.PlayRooms;
+﻿using Domain.Amenities;
+using Domain.PlayRooms;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -10,6 +11,7 @@ public class PlayRoomAmenityConfiguration : IEntityTypeConfiguration<PlayRoomAme
     {
         builder.HasKey(x => new { x.PlayRoomId, x.AmenityId });
         builder.Property(x => x.PlayRoomId).HasConversion(x => x.Value, x => new PlayRoomId(x));
+        builder.Property(x => x.AmenityId).HasConversion(x => x.Value, x => new AmenityId(x));
 
         builder.HasOne(x => x.PlayRoom)
             .WithMany(x => x.Amenities)
