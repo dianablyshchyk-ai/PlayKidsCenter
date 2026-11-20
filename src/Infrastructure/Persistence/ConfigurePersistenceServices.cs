@@ -38,5 +38,9 @@ public static class ConfigurePersistenceServices
         services.AddScoped<PlayRoomRepository>();
         services.AddScoped<IPlayRoomRepository>(provider => provider.GetRequiredService<PlayRoomRepository>());
         services.AddScoped<IPlayRoomQueries>(provider => provider.GetRequiredService<PlayRoomRepository>());
+
+        services.AddScoped<AmenityRepository>();
+        services.AddScoped<IAmenityRepository>(provider => provider.GetRequiredService<AmenityRepository>());
+        services.AddScoped<IAmenityQueries>(provider => provider.GetRequiredService<AmenityRepository>());
     }
 }
